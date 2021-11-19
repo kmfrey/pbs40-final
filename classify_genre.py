@@ -76,6 +76,16 @@ def graph_tempo():
     plt.xlabel("Beats per minute")
     plt.show()
 
+# visualize the data along some dimensions
+def visualize_data(X_train):
+    # draw scatter for the training data along 2 dimensions (tempo & random timbre)
+    plt.scatter(X_train.loc[:, 'tempo'], X_train.loc[:, 't30'])
+    plt.title('Data along tempo & t30 dimension')
+    plt.xlabel('Tempo')
+    plt.ylabel('Timbre')
+    plt.show()
+
+
 
 def classify():
     # read features into a DF
@@ -95,11 +105,8 @@ def classify():
     # evaluate
     print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
     # Checking that output is not just pop/rock, which is the most common label.
-    count = 0
-    for y in y_pred:
-        if y != le.transform(['Pop_Rock'])[0]:
-            count += 1
-    print("Number of non-pop/rock predicted songs:", count)
+    # check_pop(y_pred)
+    # visualize_data(X_train, classifier)
     return classifier
 
 # function from StackOverflow (https://stackoverflow.com/a/46581125)
@@ -108,6 +115,13 @@ def clean_dataset(df):
     df.dropna(inplace=True)
     indices_to_keep = ~df.isin([np.nan, np.inf, -np.inf]).any(1)
     return df[indices_to_keep].astype(np.float64)
+
+def check_pop(y_pred):
+    count = 0
+    for y in y_pred:
+        if y != le.transform(['Pop_Rock'])[0]:
+            count += 1
+    print("Number of non-pop/rock predicted songs:", count)
 
 # helper function to clean the dataset & normalize the data.
 # Returns a tuple of genres and features
@@ -121,8 +135,10 @@ def preprocess_data(dataframe):
     timbre_df = features_df.loc[:, 't0':'t47']
     features_df.loc[:, 't0':'t47'] = preprocessing.normalize(timbre_df, axis=0)
     # normalize other features
-    normalized_df = features_df.loc[:, 'key':'tempo']
-    features_df.loc[:, 'key':'tempo'] = preprocessing.normalize(normalized_df)
+    features_df.loc[:, 'key':'timesignature'] = preprocessing.normalize(features_df.loc[:, 'key':'timesignature'])
+    # robustly scale the tempo, which includes outliers.
+    rscaler = preprocessing.RobustScaler(with_centering=False)
+    features_df.loc[:, 'tempo'] = rscaler.fit_transform(features_df.loc[:, 'tempo'].values.reshape(-1,1))
     return df.genre, features_df
 
 
